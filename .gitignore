@@ -1,0 +1,17 @@
+*.env
+.env
+terraform.tfvars
+k8s/secrets.yaml
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+__pycache__/
+*.pyc
+.pytest_cache/
+target/
+dbt_packages/
+logs/
+simulator/output/
+.DS_Store
+.vscode/settings.json
