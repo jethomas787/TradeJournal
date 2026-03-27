@@ -14,4 +14,4 @@ dbt_packages/
 logs/
 simulator/output/
 .DS_Store
-.vscode/settings.json
+.vscode/settings.jsoninfra/tfplan
