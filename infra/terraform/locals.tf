@@ -1,7 +1,10 @@
 locals {
-    tags = {
-        project = "tradejournal"
-        environment = "dev"
-        managed_by = "terraform"
-    }
+  common_tags = {
+    project     = "TradeJournal"
+    environment = var.environment
+    managed_by  = "Terraform"
+    week        = "Week1"
+    cost-centre = "tradejournal"
+    owner       = "tradejournal"
+  }
 }
