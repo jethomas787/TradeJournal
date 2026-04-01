@@ -21,6 +21,8 @@ tfplan
 infra/tfplan
 .venv/
 venv/
+venv_stable/
+venv*/
 ENV/
 __pycache__/
 *.py[cod]
