@@ -55,10 +55,8 @@ resource "azurerm_key_vault_secret" "pg_connection_string" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
-resource "azurerm_key_vault_secret" "storage_account_key" {
-  depends_on = [time_sleep.kv_rbac_wait]
-
-  name         = "storage-account-key"
-  value        = azurerm_storage_account.adls.primary_access_key
-  key_vault_id = azurerm_key_vault.kv.id
+resource "azurerm_role_assignment" "sp_adls_contributor" {
+  scope                = azurerm_storage_account.adls.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
 }

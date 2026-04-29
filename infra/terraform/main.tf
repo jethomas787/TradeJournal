@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/time"
       version = "~> 0.9"
     }
+    confluent = {
+      source  = "confluentinc/confluent"
+      version = "~> 1.76"
+    }
   }
 }
 
@@ -179,4 +183,103 @@ resource "azurerm_consumption_budget_resource_group" "tp_budget" {
     ignore_changes = [time_period]
   }
 }
+resource "confluent_service_account" "admin" {
+  display_name = "tradeledger-admin-sa"
+  description  = "Service account for cluster administration"
+}
+
+resource "confluent_api_key" "cluster_admin" {
+  display_name = "cluster-admin-api-key"
+  description  = "Kafka API Key owned by the admin service account"
+
+  owner {
+    id          = confluent_service_account.admin.id
+    api_version = confluent_service_account.admin.api_version
+    kind        = confluent_service_account.admin.kind
+  }
+
+  managed_resource {
+    id          = confluent_kafka_cluster.standard.id
+    api_version = confluent_kafka_cluster.standard.api_version
+    kind        = confluent_kafka_cluster.standard.kind
+
+    environment {
+      id = confluent_environment.tradeledger.id
+    }
+  }
+}
+
+resource "confluent_environment" "tradeledger"{
+  display_name = "tradeledger - ${var.environment}"
+}
+
+resource "confluent_kafka_cluster" "standard" {
+  display_name = "tradeledger-cluster"
+  availability = "SINGLE_ZONE"
+  cloud        = "AZURE"
+  region       = "canadacentral"
+  standard{}
+  
+  environment {
+    id = confluent_environment.tradeledger.id
+  }
+}
+
+resource "confluent_kafka_topic" "trades_raw" {
+  topic_name       = "trades-raw"
+  partitions_count = 3
+  rest_endpoint    = confluent_kafka_cluster.standard.rest_endpoint
+
+  kafka_cluster {
+    id = confluent_kafka_cluster.standard.id
+  }
+
+  credentials {
+    key    = confluent_api_key.cluster_admin.id
+    secret = confluent_api_key.cluster_admin.secret 
+  }
+
+  config = {
+    "retention.ms"   = "604800000"
+    "cleanup.policy" = "delete"
+  }
+}
+  
+resource "confluent_service_account" "producer" {
+  display_name = "tradeledger_producer"
+  description = "GBM simulator producer = write access to trade-raw only"
+}
+
+resource "confluent_service_account" "consumer" {
+  display_name = "tradeledger_consumer"
+  description = "Bronze consumer - read access to trade- raw only" 
+}
+
+resource "confluent_api_key" "producer_key" {
+  display_name = "producer-api-key"
+  owner {
+      id  = confluent_service_account.producer.id
+      api_version = confluent_service_account.producer.api_version
+      kind  = confluent_service_account.producer.kind
+  }
+  managed_resource{
+      id = confluent_kafka_cluster.standard.id
+      api_version = confluent_kafka_cluster.standard.api_version
+      kind = confluent_kafka_cluster.standard.kind
+      environment {
+        id = confluent_environment.tradeledger.id
+      }
+  }
+}
+resource "azurerm_key_vault_secret" "kafka_producer_key"{
+  name = "kafka-producer-key"
+  value = confluent_api_key.producer_key.id
+  key_vault_id = azurerm_key_vault.kv.id
+}
+resource "azurerm_key_vault_secret" "kafka_producer_secret" {
+  name = "kafka-producer-secret"
+  value = confluent_api_key.producer_key.secret
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
 
