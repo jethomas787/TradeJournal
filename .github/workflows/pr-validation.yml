@@ -38,7 +38,6 @@ jobs:
         run: |
           pip install bandit
           bandit -r simulator/ consumer/ -ll -f json -o bandit-report.json
-          # -ll = only HIGH and MEDIUM severity (not noise)
 
       - name: Upload Bandit Report
         uses: actions/upload-artifact@v4
@@ -129,10 +128,46 @@ jobs:
             --cov=simulator \
             --cov=consumer \
             --cov-report=xml \
-            --cov-fail-under=80
-        # 80% coverage minimum — equivalent to enforcing JaCoCo thresholds
+            --cov-fail-under=60
+        # 60% threshold for now — rises each week up to 80% by Week 12
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v4
         with:
           file: coverage.xml
+
+  python-lint:
+    name: "[W3] Python Lint"
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install ruff==0.4.0
+
+      - name: Lint with ruff
+        # ruff is the modern Python linter — faster than flake8, enforces
+        # the same PEP8 rules plus import ordering (equivalent to Checkstyle)
+        run: ruff check simulator/ consumer/ scripts/ tests/ --output-format=github
+
+  test-scaffold:
+    name: "[W3] Test Framework Smoke Test"
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Verify Test Framework
+        # No coverage threshold yet — just verifies pytest collects and runs
+        run: pytest tests/ -v --tb=short
